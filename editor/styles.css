@@ -59,10 +59,11 @@ button:hover { background: #3e7bff; }
 
 .project-banner {
   grid-column: 1 / 2;
-  padding: 4px 16px;
+  padding: 2px 12px;
   background: #0d1422;
   border-bottom: 1px solid #2d3a52;
-  font-size: 13px;
+  font-size: 12px;
+  line-height: 1.4;
   color: #7a8eb0;
 }
 
