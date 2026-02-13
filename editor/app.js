@@ -68,11 +68,11 @@ function generateUniqueSceneId() {
 }
 
 function getOutPortPosition(node, choiceIndex) {
-  return { x: node.x + NODE_WIDTH + 6, y: node.y + OUT_PORT_BASE_Y + choiceIndex * PORT_STEP_Y + 6 };
+  return { x: node.x + NODE_WIDTH, y: node.y + OUT_PORT_BASE_Y + choiceIndex * PORT_STEP_Y + 6 };
 }
 
 function getInPortPosition(node) {
-  return { x: node.x - 6, y: node.y + 34 };
+  return { x: node.x, y: node.y + 34 };
 }
 
 function toWorkspacePoint(clientX, clientY) {
@@ -98,6 +98,7 @@ function createNode({ id, x, y, title, isStart = false, isEnd = false, skipUpdat
     y,
     text: isEnd ? "ゲームを終了します。" : "",
     videoFile: "",
+    videoFit: "cover",
     bgm: "",
     isStart,
     isEnd,
@@ -214,6 +215,22 @@ function renderNode(node) {
   videoThumb.className = "node-video-thumb";
   videoThumb.dataset.role = "video-thumb";
 
+  const fitSelect = document.createElement("select");
+  fitSelect.className = "node-select";
+  fitSelect.dataset.role = "fit-select";
+  const fitContain = document.createElement("option");
+  fitContain.value = "contain";
+  fitContain.textContent = "内接（余白あり）";
+  const fitCover = document.createElement("option");
+  fitCover.value = "cover";
+  fitCover.textContent = "カバー（はみ出しカット）";
+  fitSelect.append(fitContain, fitCover);
+  fitSelect.value = node.videoFit;
+  fitSelect.addEventListener("change", () => {
+    node.videoFit = fitSelect.value;
+    updateOutputs();
+  });
+
   const bgmDrop = makeDropArea("BGM", "ドロップでBGM候補に追加", (file) => {
     bgmAssetFiles.set(file.name, file);
     if (!bgmLibrary.includes(file.name)) bgmLibrary.push(file.name);
@@ -250,7 +267,7 @@ function renderNode(node) {
   choicesEl.className = "choice-list";
   const outPortsWrap = document.createElement("div");
 
-  el.append(inPort, title, videoDrop, videoThumb, bgmDrop, bgmSelect, textArea, previewBtn, choicesEl, outPortsWrap);
+  el.append(inPort, title, videoDrop, videoThumb, fitSelect, bgmDrop, bgmSelect, textArea, previewBtn, choicesEl, outPortsWrap);
 
   el.addEventListener("contextmenu", (event) => {
     event.preventDefault();
@@ -640,6 +657,7 @@ function collectSceneJson() {
   nodes.forEach((node) => {
     scenes[node.id] = {
       video: node.videoFile,
+      videoFit: node.videoFit || "cover",
       bgm: node.bgm,
       text: node.text,
       choices: node.choices.map((choice) => ({ label: choice.label, to: choice.to }))
@@ -739,6 +757,13 @@ function toRenpyScript(data) {
     lines.push("");
   }
 
+  const hasCover = sceneEntries.some(([, scene]) => scene?.video && scene.videoFit === "cover");
+  if (hasCover) {
+    lines.push("transform __editor_cover:");
+    lines.push("    fit \"cover\"");
+    lines.push("");
+  }
+
   sceneEntries.forEach(([id, scene]) => {
     if (!scene?.video) return;
     const sceneLabel = labelMap.get(id) || toRenpyLabel(id);
@@ -761,7 +786,11 @@ function toRenpyScript(data) {
     lines.push("    scene black");
     if (scene.video) {
       const videoImageName = `__editor_video_bg_${sceneLabel}`;
-      lines.push(`    show ${videoImageName}`);
+      if (scene.videoFit === "cover") {
+        lines.push(`    show ${videoImageName} at __editor_cover`);
+      } else {
+        lines.push(`    show ${videoImageName}`);
+      }
     }
     if (scene.bgm) lines.push(`    play music "assets/bgm/${toRenpyString(scene.bgm)}" fadein 0.5`);
     if (scene.text) {
@@ -1170,6 +1199,7 @@ function normalizeLoadedSceneData(rawData) {
 
     repaired.scenes[sceneId] = {
       video: typeof scene.video === "string" ? scene.video : "",
+      videoFit: scene.videoFit === "contain" ? "contain" : "cover",
       bgm: typeof scene.bgm === "string" ? scene.bgm : "",
       text: typeof scene.text === "string" ? scene.text : "",
       choices: normalizedChoices
@@ -1244,6 +1274,7 @@ function applySceneDataToEditor(inputData) {
     const node = nodes.get(id);
     if (!node) return;
     node.videoFile = scene.video || "";
+    node.videoFit = scene.videoFit === "contain" ? "contain" : "cover";
     node.bgm = scene.bgm || "";
     node.text = node.isEnd ? (scene.text || "ゲームを終了します。") : (scene.text || "");
     node.choices = Array.isArray(scene.choices) ? scene.choices.map((c) => ({ label: c.label || "", to: c.to || "" })) : [];
@@ -1256,6 +1287,8 @@ function applySceneDataToEditor(inputData) {
     updateNodeAssetsText(node);
     updateNodeVideoThumbnail(node);
     syncEdgesFromNode(node);
+    const fitSel = node.element?.querySelector('[data-role="fit-select"]');
+    if (fitSel) fitSel.value = node.videoFit;
   });
 
   updateOutputs();
