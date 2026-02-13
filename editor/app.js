@@ -28,7 +28,6 @@ const cleanupAssetsBtn = document.getElementById("cleanup-assets-btn");
 const saveScriptBtn = document.getElementById("save-script-btn");
 const exportPathLabel = document.getElementById("export-path-label");
 const changePathBtn = document.getElementById("change-path-btn");
-const setProjectsDirBtn = document.getElementById("set-projects-dir-btn");
 const projectBanner = document.getElementById("project-banner");
 const minimapCanvas = document.getElementById("minimap-canvas");
 const minimapCtx = minimapCanvas.getContext("2d");
@@ -52,9 +51,7 @@ let workspaceHeight = WORKSPACE_HEIGHT;
 const HANDLE_DB_NAME = "renpy-node-editor";
 const HANDLE_STORE_NAME = "handles";
 const PROJECT_ROOT_KEY = "gameFolder";
-const PROJECTS_DIR_KEY = "projectsFolder";
 let projectRootHandleCache = null;
-let projectsDirHandleCache = null;
 
 function updateNodeCounter(nodeId) {
   const match = /^s(\d+)$/.exec(nodeId);
@@ -1010,45 +1007,6 @@ async function clearStoredProjectRootHandle() {
   }
 }
 
-async function getStoredProjectsDirHandle() {
-  try {
-    const db = await openHandleDb();
-    return await new Promise((resolve, reject) => {
-      const tx = db.transaction(HANDLE_STORE_NAME, "readonly");
-      const store = tx.objectStore(HANDLE_STORE_NAME);
-      const request = store.get(PROJECTS_DIR_KEY);
-      request.onsuccess = () => resolve(request.result || null);
-      request.onerror = () => reject(request.error);
-    });
-  } catch (error) {
-    return null;
-  }
-}
-
-async function setStoredProjectsDirHandle(handle) {
-  try {
-    const db = await openHandleDb();
-    await new Promise((resolve, reject) => {
-      const tx = db.transaction(HANDLE_STORE_NAME, "readwrite");
-      tx.objectStore(HANDLE_STORE_NAME).put(handle, PROJECTS_DIR_KEY);
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => reject(tx.error);
-    });
-  } catch (error) {
-    console.warn("failed to save projects dir handle", error);
-  }
-}
-
-async function getProjectsStartIn() {
-  if (projectsDirHandleCache) return projectsDirHandleCache;
-  const stored = await getStoredProjectsDirHandle();
-  if (stored) {
-    projectsDirHandleCache = stored;
-    return stored;
-  }
-  return undefined;
-}
-
 async function ensureReadwritePermission(handle) {
   if (!handle) return false;
   if (typeof handle.queryPermission === "function") {
@@ -1066,11 +1024,11 @@ function updateProjectDisplay(handle) {
   const name = handle?.name || null;
   if (name) {
     exportPathLabel.textContent = `プロジェクト: ${name}`;
-    exportPathLabel.title = `プロジェクトフォルダ: ${name}`;
+    exportPathLabel.title = name;
     projectBanner.textContent = name;
   } else {
-    exportPathLabel.textContent = "プロジェクト: 未選択";
-    exportPathLabel.title = "プロジェクトフォルダ";
+    exportPathLabel.textContent = "プロジェクトフォルダを選択してください";
+    exportPathLabel.title = "";
     projectBanner.textContent = "プロジェクト未選択";
   }
 }
@@ -1089,9 +1047,8 @@ async function ensureProjectRootHandle() {
     return storedHandle;
   }
 
-  const startIn = await getProjectsStartIn();
   const pickerOptions = { mode: "readwrite" };
-  if (startIn) pickerOptions.startIn = startIn;
+  if (projectRootHandleCache) pickerOptions.startIn = projectRootHandleCache;
   const pickedHandle = await window.showDirectoryPicker(pickerOptions);
   if (!await ensureReadwritePermission(pickedHandle)) throw new Error("directory write permission denied");
   projectRootHandleCache = pickedHandle;
@@ -1106,9 +1063,8 @@ async function changeProjectRoot() {
     return;
   }
   try {
-    const startIn = await getProjectsStartIn();
     const pickerOptions = { mode: "readwrite" };
-    if (startIn) pickerOptions.startIn = startIn;
+    if (projectRootHandleCache) pickerOptions.startIn = projectRootHandleCache;
     const pickedHandle = await window.showDirectoryPicker(pickerOptions);
     if (!await ensureReadwritePermission(pickedHandle)) throw new Error("directory write permission denied");
     projectRootHandleCache = pickedHandle;
@@ -1503,21 +1459,6 @@ loadProjectBtn.addEventListener("click", loadProjectChanges);
 cleanupAssetsBtn.addEventListener("click", removeUnusedAssets);
 saveScriptBtn.addEventListener("click", saveProjectChanges);
 changePathBtn.addEventListener("click", changeProjectRoot);
-setProjectsDirBtn.addEventListener("click", async () => {
-  if (typeof window.showDirectoryPicker !== "function") {
-    window.alert("このブラウザではフォルダ選択に未対応です。");
-    return;
-  }
-  try {
-    const handle = await window.showDirectoryPicker({ mode: "read" });
-    projectsDirHandleCache = handle;
-    await setStoredProjectsDirHandle(handle);
-    window.alert(`格納フォルダを「${handle.name}」に設定しました。\nプロジェクト変更時にこのフォルダが初期表示されます。`);
-  } catch (error) {
-    if (error?.name === "AbortError") return;
-    window.alert("格納フォルダの設定に失敗しました。");
-  }
-});
 document.getElementById("cleanup-btn").addEventListener("click", removeEmptyNodes);
 document.getElementById("export-btn").addEventListener("click", updateOutputs);
 workspace.addEventListener("scroll", drawMinimap);
