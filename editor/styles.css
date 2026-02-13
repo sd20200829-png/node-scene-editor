@@ -210,6 +210,7 @@ button:hover { background: #3e7bff; }
 }
 
 .output {
+  grid-row: 2 / 4;
   border-left: 1px solid #2d3a52;
   background: #111724;
   padding: 12px;
