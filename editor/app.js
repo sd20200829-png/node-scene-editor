@@ -219,10 +219,10 @@ function renderNode(node) {
   fitSelect.dataset.role = "fit-select";
   const fitContain = document.createElement("option");
   fitContain.value = "contain";
-  fitContain.textContent = "内接（余白あり）";
+  fitContain.textContent = "画面に合わせる";
   const fitCover = document.createElement("option");
   fitCover.value = "cover";
-  fitCover.textContent = "カバー（はみ出しカット）";
+  fitCover.textContent = "画面いっぱいに表示";
   fitSelect.append(fitContain, fitCover);
   fitSelect.value = node.videoFit;
   fitSelect.addEventListener("change", () => {
@@ -756,8 +756,11 @@ function toRenpyScript(data) {
     lines.push("");
   }
 
-  const hasCover = sceneEntries.some(([, scene]) => scene?.video && scene.videoFit === "cover");
-  if (hasCover) {
+  const hasVideo = sceneEntries.some(([, scene]) => Boolean(scene?.video));
+  if (hasVideo) {
+    lines.push("transform __editor_contain:");
+    lines.push("    fit \"contain\"");
+    lines.push("");
     lines.push("transform __editor_cover:");
     lines.push("    fit \"cover\"");
     lines.push("");
@@ -785,11 +788,8 @@ function toRenpyScript(data) {
     lines.push("    scene black");
     if (scene.video) {
       const videoImageName = `__editor_video_bg_${sceneLabel}`;
-      if (scene.videoFit === "cover") {
-        lines.push(`    show ${videoImageName} at __editor_cover`);
-      } else {
-        lines.push(`    show ${videoImageName}`);
-      }
+      const fitTransform = scene.videoFit === "cover" ? "__editor_cover" : "__editor_contain";
+      lines.push(`    show ${videoImageName} at ${fitTransform}`);
     }
     if (scene.bgm) lines.push(`    play music "assets/bgm/${toRenpyString(scene.bgm)}" fadein 0.5`);
     if (scene.text) {
