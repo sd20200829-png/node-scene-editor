@@ -26,6 +26,9 @@ const alignBtn = document.getElementById("align-btn");
 const loadProjectBtn = document.getElementById("load-project-btn");
 const cleanupAssetsBtn = document.getElementById("cleanup-assets-btn");
 const saveScriptBtn = document.getElementById("save-script-btn");
+const exportPathLabel = document.getElementById("export-path-label");
+const changePathBtn = document.getElementById("change-path-btn");
+const projectBanner = document.getElementById("project-banner");
 const minimapCanvas = document.getElementById("minimap-canvas");
 const minimapCtx = minimapCanvas.getContext("2d");
 
@@ -717,9 +720,7 @@ function toRenpyScript(data) {
     "    ]",
     "    for __editor_font_path in __editor_font_candidates:",
     "        if renpy.loadable(__editor_font_path):",
-    "            gui.text_font = __editor_font_path",
-    "            gui.name_text_font = __editor_font_path",
-    "            gui.interface_text_font = __editor_font_path",
+    "            style.default.font = __editor_font_path",
     "            break",
     "    def __editor_safe_quit_action():",
     "        if renpy.confirm(\"ゲームを終了しますか？\"):",
@@ -1019,12 +1020,30 @@ async function ensureReadwritePermission(handle) {
   return false;
 }
 
+function updateProjectDisplay(handle) {
+  const name = handle?.name || null;
+  if (name) {
+    exportPathLabel.textContent = `プロジェクト: ${name}`;
+    exportPathLabel.title = `プロジェクトフォルダ: ${name}`;
+    projectBanner.textContent = name;
+  } else {
+    exportPathLabel.textContent = "プロジェクト: 未選択";
+    exportPathLabel.title = "プロジェクトフォルダ";
+    projectBanner.textContent = "プロジェクト未選択";
+  }
+}
+
+async function getGameDir(projectHandle) {
+  return projectHandle.getDirectoryHandle("game", { create: true });
+}
+
 async function ensureProjectRootHandle() {
   if (projectRootHandleCache && await ensureReadwritePermission(projectRootHandleCache)) return projectRootHandleCache;
 
   const storedHandle = await getStoredProjectRootHandle();
   if (storedHandle && await ensureReadwritePermission(storedHandle)) {
     projectRootHandleCache = storedHandle;
+    updateProjectDisplay(storedHandle);
     return storedHandle;
   }
 
@@ -1032,7 +1051,27 @@ async function ensureProjectRootHandle() {
   if (!await ensureReadwritePermission(pickedHandle)) throw new Error("directory write permission denied");
   projectRootHandleCache = pickedHandle;
   await setStoredProjectRootHandle(pickedHandle);
+  updateProjectDisplay(pickedHandle);
   return pickedHandle;
+}
+
+async function changeProjectRoot() {
+  if (typeof window.showDirectoryPicker !== "function") {
+    window.alert("このブラウザではフォルダ選択に未対応です。Chromium系ブラウザでお試しください。");
+    return;
+  }
+  try {
+    const pickedHandle = await window.showDirectoryPicker({ mode: "readwrite" });
+    if (!await ensureReadwritePermission(pickedHandle)) throw new Error("directory write permission denied");
+    projectRootHandleCache = pickedHandle;
+    await setStoredProjectRootHandle(pickedHandle);
+    updateProjectDisplay(pickedHandle);
+    window.alert(`プロジェクト「${pickedHandle.name}」を選択しました。`);
+  } catch (error) {
+    if (error?.name === "AbortError") return;
+    console.error(error);
+    window.alert("プロジェクトの変更に失敗しました。");
+  }
 }
 
 async function writeTextFile(directoryHandle, fileName, content) {
@@ -1056,7 +1095,8 @@ async function saveProjectChanges() {
   }
 
   try {
-    const gameDir = await ensureProjectRootHandle();
+    const projectDir = await ensureProjectRootHandle();
+    const gameDir = await getGameDir(projectDir);
     const assetsDir = await gameDir.getDirectoryHandle("assets", { create: true });
     const videosDir = await assetsDir.getDirectoryHandle("videos", { create: true });
     const bgmDir = await assetsDir.getDirectoryHandle("bgm", { create: true });
@@ -1072,7 +1112,7 @@ async function saveProjectChanges() {
       await writeBinaryFile(bgmDir, name, file);
     }
 
-    window.alert("変更を保存しました（選択済み game フォルダ配下）。");
+    window.alert(`「${projectDir.name}」に保存しました。`);
   } catch (error) {
     if (error?.name === "AbortError") return;
     if (error?.name === "NotAllowedError") {
@@ -1226,14 +1266,15 @@ async function loadProjectChanges() {
   }
 
   try {
-    const gameDir = await ensureProjectRootHandle();
+    const projectDir = await ensureProjectRootHandle();
+    const gameDir = await getGameDir(projectDir);
     const raw = await readTextFile(gameDir, "scenes.json");
     const data = JSON.parse(raw);
     const warnings = applySceneDataToEditor(data);
     if (warnings.length > 0) {
-      window.alert(`保存済み変更を読み込みました（自動修復: ${warnings.length}件）。\n${warnings.slice(0, 5).join("\n")}`);
+      window.alert(`「${projectDir.name}」から読み込みました（自動修復: ${warnings.length}件）。\n${warnings.slice(0, 5).join("\n")}`);
     } else {
-      window.alert("保存済み変更を読み込みました。\n（game/scenes.json）");
+      window.alert(`「${projectDir.name}」から読み込みました。`);
     }
   } catch (error) {
     if (error?.name === "AbortError") return;
@@ -1249,7 +1290,8 @@ async function removeUnusedAssets() {
   }
 
   try {
-    const gameDir = await ensureProjectRootHandle();
+    const projectDir = await ensureProjectRootHandle();
+    const gameDir = await getGameDir(projectDir);
     const assetsDir = await gameDir.getDirectoryHandle("assets", { create: true });
     const videosDir = await assetsDir.getDirectoryHandle("videos", { create: true });
     const bgmDir = await assetsDir.getDirectoryHandle("bgm", { create: true });
@@ -1412,6 +1454,7 @@ alignBtn.addEventListener("click", alignNodesLeftToRight);
 loadProjectBtn.addEventListener("click", loadProjectChanges);
 cleanupAssetsBtn.addEventListener("click", removeUnusedAssets);
 saveScriptBtn.addEventListener("click", saveProjectChanges);
+changePathBtn.addEventListener("click", changeProjectRoot);
 document.getElementById("cleanup-btn").addEventListener("click", removeEmptyNodes);
 document.getElementById("export-btn").addEventListener("click", updateOutputs);
 workspace.addEventListener("scroll", drawMinimap);
@@ -1445,3 +1488,7 @@ minimapCanvas.addEventListener("click", (event) => {
 createNode({ id: "s0001", x: 120, y: 120, title: "開始シーン", isStart: true });
 createNode({ id: "end_game", x: 940, y: 120, title: "特殊ノード", isEnd: true });
 updateOutputs();
+
+getStoredProjectRootHandle().then((handle) => {
+  if (handle) updateProjectDisplay(handle);
+});

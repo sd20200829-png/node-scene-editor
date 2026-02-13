@@ -24,7 +24,20 @@ body {
   border-bottom: 1px solid #2d3a52;
 }
 
-.actions { display: flex; gap: 10px; }
+.actions { display: flex; gap: 10px; align-items: center; }
+
+.export-path-label {
+  font-size: 13px;
+  color: #a8b8d8;
+  background: #0d1422;
+  border: 1px solid #2d3a52;
+  border-radius: 6px;
+  padding: 6px 10px;
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 button {
   background: #2e6cf6;
@@ -41,6 +54,19 @@ button:hover { background: #3e7bff; }
   position: relative;
   overflow: auto;
   background: radial-gradient(circle at top left, #1b2233, #10151f 60%);
+}
+
+.project-banner {
+  position: sticky;
+  top: 0;
+  left: 0;
+  z-index: 400;
+  padding: 6px 16px;
+  background: #161d2bee;
+  border-bottom: 1px solid #2d3a52;
+  font-size: 13px;
+  color: #7a8eb0;
+  backdrop-filter: blur(6px);
 }
 
 #edges-layer {
