@@ -68,11 +68,11 @@ function generateUniqueSceneId() {
 }
 
 function getOutPortPosition(node, choiceIndex) {
-  return { x: node.x + NODE_WIDTH, y: node.y + OUT_PORT_BASE_Y + choiceIndex * PORT_STEP_Y + 6 };
+  return { x: node.x + NODE_WIDTH + 6, y: node.y + OUT_PORT_BASE_Y + choiceIndex * PORT_STEP_Y + 6 };
 }
 
 function getInPortPosition(node) {
-  return { x: node.x, y: node.y + 34 };
+  return { x: node.x - 6, y: node.y + 34 };
 }
 
 function toWorkspacePoint(clientX, clientY) {
@@ -708,7 +708,7 @@ function toRenpyScript(data) {
   const lintWarnings = lintGeneratedRenpy(labelMap);
 
   const lines = [
-    "init python:",
+    "init -1 python:",
     "    __editor_font_candidates = [",
     "        \"assets/fonts/yomogi.ttf\",",
     "        \"assets/fonts/NotoSansJP-Regular.otf\",",
@@ -720,8 +720,13 @@ function toRenpyScript(data) {
     "    ]",
     "    for __editor_font_path in __editor_font_candidates:",
     "        if renpy.loadable(__editor_font_path):",
+    "            gui.text_font = __editor_font_path",
+    "            gui.name_text_font = __editor_font_path",
+    "            gui.interface_text_font = __editor_font_path",
     "            style.default.font = __editor_font_path",
     "            break",
+    "",
+    "init python:",
     "    def __editor_safe_quit_action():",
     "        if renpy.confirm(\"ゲームを終了しますか？\"):",
     "            renpy.quit()",
