@@ -11,7 +11,7 @@ body {
   height: 100vh;
   display: grid;
   grid-template-columns: 1fr 300px;
-  grid-template-rows: auto auto 1fr;
+  grid-template-rows: auto 1fr;
   overflow: hidden;
 }
 
@@ -55,16 +55,6 @@ button:hover { background: #3e7bff; }
   position: relative;
   overflow: auto;
   background: radial-gradient(circle at top left, #1b2233, #10151f 60%);
-}
-
-.project-banner {
-  grid-column: 1 / 2;
-  padding: 2px 12px;
-  background: #0d1422;
-  border-bottom: 1px solid #2d3a52;
-  font-size: 12px;
-  line-height: 1.4;
-  color: #7a8eb0;
 }
 
 #edges-layer {
@@ -212,7 +202,6 @@ button:hover { background: #3e7bff; }
 }
 
 .output {
-  grid-row: 2 / 4;
   border-left: 1px solid #2d3a52;
   background: #111724;
   padding: 12px;

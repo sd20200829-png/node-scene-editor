@@ -28,7 +28,6 @@ const cleanupAssetsBtn = document.getElementById("cleanup-assets-btn");
 const saveScriptBtn = document.getElementById("save-script-btn");
 const exportPathLabel = document.getElementById("export-path-label");
 const changePathBtn = document.getElementById("change-path-btn");
-const projectBanner = document.getElementById("project-banner");
 const minimapCanvas = document.getElementById("minimap-canvas");
 const minimapCtx = minimapCanvas.getContext("2d");
 
@@ -1059,11 +1058,9 @@ function updateProjectDisplay(handle) {
   if (name) {
     exportPathLabel.textContent = `プロジェクト: ${name}`;
     exportPathLabel.title = name;
-    projectBanner.textContent = name;
   } else {
     exportPathLabel.textContent = "プロジェクトフォルダを選択してください";
     exportPathLabel.title = "";
-    projectBanner.textContent = "プロジェクト未選択";
   }
 }
 
