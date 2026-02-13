@@ -742,12 +742,6 @@ function toRenpyScript(data) {
     "            gui.interface_text_font = __editor_font_path",
     "            style.default.font = __editor_font_path",
     "            break",
-    "",
-    "init python:",
-    "    def __editor_safe_quit_action():",
-    "        if renpy.confirm(\"ゲームを終了しますか？\"):",
-    "            renpy.quit()",
-    "    config.quit_action = __editor_safe_quit_action",
     ""
   ];
 
@@ -759,9 +753,13 @@ function toRenpyScript(data) {
   const hasVideo = sceneEntries.some(([, scene]) => Boolean(scene?.video));
   if (hasVideo) {
     lines.push("transform __editor_contain:");
+    lines.push("    xalign 0.5");
+    lines.push("    yalign 0.5");
     lines.push("    fit \"contain\"");
     lines.push("");
     lines.push("transform __editor_cover:");
+    lines.push("    xalign 0.5");
+    lines.push("    yalign 0.5");
     lines.push("    fit \"cover\"");
     lines.push("");
   }
